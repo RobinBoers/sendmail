@@ -1,0 +1,12 @@
+[package]
+name = "sendmail"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lettre = "0.11"
+toml = "0.8.12"
+serde = { version = "1.0.197", features = ["derive"] }
+clap = { version = "4.5.4", features = ["derive", "cargo"] }
+platform-dirs = "0.3.0"
+markdown = "1.0.0-alpha.16"
