@@ -29,5 +29,6 @@ sendmail school hello-world.md \
   --subject "Hello World!" \
   --to "hor@schravenlant.nl" \
   --to "you@example.com" \
-  --password "$(pass mail/school)"
+  --password "$(pass mail/school)" \
+  --attach assignment.pdf
 ```

@@ -107,26 +107,12 @@ fn create_mail(path: String, subject: String, to: Vec<String>, cc: Vec<String>, 
     let (plain, html) = parse_markdown(path);
 
     let body = MultiPart::alternative_plain_html(plain, html);
-
-    let mut attachments: Vec<SinglePart> = vec![];
+    let mut content = MultiPart::mixed().multipart(body);
     
-    for path in files {
-        validate_file(&path);
-
-        let basename = Path::new(&path).file_name().unwrap().to_str().unwrap().to_string();
-        let body = fs::read(&path).expect(&format!("{}: Couldn't read file.", path));
-
-        // Try to infer the mime type and otherwise fall back to application/octet-stream
-        let mime_type = mime_guess::from_path(&path).first().unwrap_or(mime::APPLICATION_OCTET_STREAM);
-        let content_type = ContentType::parse(&mime_type.to_string()).unwrap();
-        
-        let attachment = Attachment::new(basename).body(body, content_type);
-        attachments.push(attachment);
+    for file in files {
+        let attachment = create_attachment(file);
+        content = content.singlepart(attachment);
     };
-
-    let content = MultiPart::mixed().multipart(body);
-
-    // Collect attachments in content.
 
     Message::builder()
         .from(from)
@@ -146,6 +132,19 @@ fn addresses(addresses: Vec<String>) -> Mailboxes {
     }
 
     mailboxes
+}
+
+fn create_attachment(path: String) -> SinglePart {
+    validate_file(&path);
+
+    let basename = Path::new(&path).file_name().unwrap().to_str().unwrap().to_string();
+    let body = fs::read(&path).expect(&format!("{}: Couldn't read file.", path));
+
+    // Try to infer the mime type and otherwise fall back to application/octet-stream
+    let mime_type = mime_guess::from_path(&path).first().unwrap_or(mime::APPLICATION_OCTET_STREAM);
+    let content_type = ContentType::parse(&mime_type.to_string()).unwrap();
+    
+    Attachment::new(basename).body(body, content_type)
 }
 
 fn parse_address(address: String) -> Mailbox {
