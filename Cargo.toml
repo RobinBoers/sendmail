@@ -10,3 +10,5 @@ serde = { version = "1.0.197", features = ["derive"] }
 clap = { version = "4.5.4", features = ["derive", "cargo"] }
 platform-dirs = "0.3.0"
 markdown = "1.0.0-alpha.16"
+mime_guess = "2.0.4"
+mime = "0.3.17"

@@ -1,9 +1,11 @@
 use std::fs;
+use std::path::Path;
 use clap::{Parser, crate_name};
 use serde::Deserialize;
 
 use lettre::Message;
-use lettre::message::header;
+use lettre::message::Attachment;
+use lettre::message::header::{ContentType, To, Cc, Bcc};
 use lettre::message::{Mailbox, Mailboxes};
 use lettre::message::{SinglePart, MultiPart};
 
@@ -11,13 +13,14 @@ use lettre::transport::smtp::authentication::Credentials;
 use lettre::{SmtpTransport, Transport};
 
 use platform_dirs::AppDirs;
+use mime;
 
 #[derive(Deserialize)]
 struct Config {
     name: String,
     email: String,
     smtp: ServerConfig,
-    
+
     #[allow(unused)]
     imap: ServerConfig
 }
@@ -61,6 +64,10 @@ struct Args {
     /// `BCC` (Blind carbon copy) header: same as CC, but the main recipient(s) can't see it.
     #[arg(long)]
     bcc: Vec<String>,
+
+    /// Attach a file to the email.
+    #[arg(short, long)]
+    attach: Vec<String>
 }
 
 fn get_config(account: String) -> Config {
@@ -77,24 +84,49 @@ fn main() {
     let args = Args::parse();
     let config = get_config(args.account);
 
-    let mail = create_mail(args.path, args.subject, args.to, args.cc, args.bcc, &config);
+    let mail = create_mail(
+        args.path, 
+        args.subject, 
+        args.to, 
+        args.cc, 
+        args.bcc, 
+        args.attach, 
+        &config
+    );
 
     send_mail(mail, args.password, &config)
 }
 
-fn create_mail(path: String, subject: String, to: Vec<String>, cc: Vec<String>, bcc: Vec<String>, config: &Config) -> Message {
+fn create_mail(path: String, subject: String, to: Vec<String>, cc: Vec<String>, bcc: Vec<String>, files: Vec<String>, config: &Config) -> Message {
     let from = parse_address(format!("{} <{}>", config.name, config.email));
     
-    let to: header::To = addresses(to).into();
-    let cc: header::Cc = addresses(cc).into();
-    let bcc: header::Bcc = addresses(bcc).into();
+    let to: To = addresses(to).into();
+    let cc: Cc = addresses(cc).into();
+    let bcc: Bcc = addresses(bcc).into();
 
     let (plain, html) = parse_markdown(path);
 
-    let plain_part = SinglePart::plain(plain);
-    let html_part = SinglePart::html(html);
+    let body = MultiPart::alternative_plain_html(plain, html);
 
-    let body = MultiPart::alternative().singlepart(plain_part).singlepart(html_part);
+    let mut attachments: Vec<SinglePart> = vec![];
+    
+    for path in files {
+        validate_file(&path);
+
+        let basename = Path::new(&path).file_name().unwrap().to_str().unwrap().to_string();
+        let body = fs::read(&path).expect(&format!("{}: Couldn't read file.", path));
+
+        // Try to infer the mime type and otherwise fall back to application/octet-stream
+        let mime_type = mime_guess::from_path(&path).first().unwrap_or(mime::APPLICATION_OCTET_STREAM);
+        let content_type = ContentType::parse(&mime_type.to_string()).unwrap();
+        
+        let attachment = Attachment::new(basename).body(body, content_type);
+        attachments.push(attachment);
+    };
+
+    let content = MultiPart::mixed().multipart(body);
+
+    // Collect attachments in content.
 
     Message::builder()
         .from(from)
@@ -102,7 +134,7 @@ fn create_mail(path: String, subject: String, to: Vec<String>, cc: Vec<String>, 
         .mailbox(to)
         .mailbox(cc)
         .mailbox(bcc)
-        .multipart(body)
+        .multipart(content)
         .expect("Failed to build message.")
 }
 
@@ -121,10 +153,18 @@ fn parse_address(address: String) -> Mailbox {
 }
 
 fn parse_markdown(path: String) -> (String, String) {
-    let plain = fs::read_to_string(&path).expect(&format!("{}: No such file or directory.", path));
+    validate_file(&path);
+
+    let plain = fs::read_to_string(&path).expect(&format!("{}: Couldn't read file.", path));
     let html = markdown::to_html(&plain);
 
     (plain, html)
+}
+
+fn validate_file(path: &str) {
+    let file = Path::new(path);
+    if !file.exists() { panic!("{}: No such file or directory.", path) }
+    if !file.is_file() { panic!("{}: Not a file.", path) }
 }
 
 fn send_mail(mail: Message, password: String, config: &Config) {
