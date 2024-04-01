@@ -72,10 +72,9 @@ struct Args {
 
 fn get_config(account: String) -> Config {
     let directories = AppDirs::new(Some(crate_name!()), false).unwrap();
-    let config_file = format!("{}.toml", account);
-    let config_path = directories.config_dir.join(config_file);
-    
-    let toml = fs::read_to_string(config_path).expect("Couldn't read config file.");
+
+    let config_file = directories.config_dir.join(account);
+    let toml = fs::read_to_string(config_file).expect("Couldn't read config file.");
 
     toml::from_str(&toml).expect("Failed to parse TOML.")        
 }

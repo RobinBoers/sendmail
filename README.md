@@ -7,7 +7,7 @@ This is a CLI wrapper for the amazing [`lettre`](https://lettre.rs) crate. It al
 `sendmail` expects a configuration file for each account in the TOML format, located in `$XDG_CONFIG_HOME/sendmail` (defaults to `.config/sendmail`). Here's an example configuration:
 
 ```toml
-# .config/sendmail/school.toml
+# .config/sendmail/school
 
 name = "Robin Boers"
 email = "4410@schravenlant.nl"
