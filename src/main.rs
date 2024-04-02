@@ -173,7 +173,7 @@ fn send_mail(mail: Message, password: String, config: &Config) {
         .build();
 
     match mailer.send(&mail) {
-        Ok(_) => println!("Email sent successfully!"),
+        Ok(_) => println!("Sent!"),
         Err(e) => panic!("Could not send email: {e:?}"),
     }
 }
