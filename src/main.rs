@@ -37,7 +37,7 @@ struct ServerConfig {
 #[derive(Parser, Debug)]
 #[command(version, about)]
 struct Args {
-    /// The account to use, defined in `~/config/mail/`.
+    /// The account to use, defined in `~/config/sendmail/`.
     #[arg()]
     account: String,
 
